@@ -74,9 +74,21 @@ async function loadDashboard() {
         document.getElementById('totalTasks').textContent = stats.totalTasks || 0;
         document.getElementById('overloadedMembers').textContent = workloadStats.overloadedMembers || 0;
         
+        // Load tasks for each project
+        const projectsWithTasks = await Promise.all(
+            projects.slice(0, 5).map(async (project) => {
+                try {
+                    const tasks = await ProjectsAPI.getTasks(project.id);
+                    return { ...project, tasks };
+                } catch (error) {
+                    console.error(`Error loading tasks for project ${project.id}:`, error);
+                    return { ...project, tasks: [] };
+                }
+            })
+        );
+        
         // Display recent projects
-        const recentProjects = projects.slice(0, 5);
-        displayRecentProjects(recentProjects);
+        displayRecentProjects(projectsWithTasks);
         
         // Display workload overview
         displayWorkloadOverview(workloadStats.memberWorkloads || []);
@@ -95,14 +107,16 @@ function displayRecentProjects(projects) {
     
     let html = '<div class="task-list">';
     projects.forEach(project => {
-        const completion = project.tasks ? 
-            (project.tasks.filter(t => t.status === 'COMPLETED').length / project.tasks.length * 100) : 0;
+        const tasks = project.tasks || [];
+        const taskCount = tasks.length;
+        const completedCount = tasks.filter(t => t.status === 'COMPLETED').length;
+        const completion = taskCount > 0 ? (completedCount / taskCount * 100) : 0;
         
         html += `
             <div class="task-item" onclick="viewProjectDetails(${project.id})">
                 <div class="task-info">
                     <h4>${project.name}</h4>
-                    <p>${project.tasks ? project.tasks.length : 0} tasks • ${completion.toFixed(0)}% complete</p>
+                    <p>${taskCount} task${taskCount !== 1 ? 's' : ''} • ${completion.toFixed(0)}% complete</p>
                 </div>
                 <span class="status-badge ${project.status.toLowerCase().replace('_', '-')}">${project.status}</span>
             </div>
@@ -122,7 +136,8 @@ function displayWorkloadOverview(memberWorkloads) {
     }
     
     let html = '';
-    memberWorkloads.slice(0, 5).forEach(member => {
+    // Afficher TOUS les membres (pas seulement les 5 premiers)
+    memberWorkloads.forEach(member => {
         const percentage = member.workloadPercentage || 0;
         const progressClass = percentage > 100 ? 'danger' : percentage > 80 ? 'warning' : '';
         
@@ -253,6 +268,11 @@ async function addMember(event) {
         form.reset();
         showNotification('Member added successfully!', 'success');
         loadMembers();
+        
+        // Rafraîchir aussi le dashboard si on y est
+        if (currentPage === 'dashboard') {
+            loadDashboard();
+        }
     } catch (error) {
         console.error('Error adding member:', error);
         showNotification('Error adding member: ' + error.message, 'error');
@@ -263,7 +283,21 @@ async function addMember(event) {
 async function loadProjects() {
     try {
         const projects = await ProjectsAPI.getAll();
-        displayProjects(projects);
+        
+        // Load tasks for each project
+        const projectsWithTasks = await Promise.all(
+            projects.map(async (project) => {
+                try {
+                    const tasks = await ProjectsAPI.getTasks(project.id);
+                    return { ...project, tasks };
+                } catch (error) {
+                    console.error(`Error loading tasks for project ${project.id}:`, error);
+                    return { ...project, tasks: [] };
+                }
+            })
+        );
+        
+        displayProjects(projectsWithTasks);
     } catch (error) {
         console.error('Error loading projects:', error);
         showNotification('Error loading projects', 'error');
@@ -280,8 +314,9 @@ function displayProjects(projects) {
     
     let html = '';
     projects.forEach(project => {
-        const taskCount = project.tasks ? project.tasks.length : 0;
-        const completedTasks = project.tasks ? project.tasks.filter(t => t.status === 'COMPLETED').length : 0;
+        const tasks = project.tasks || [];
+        const taskCount = tasks.length;
+        const completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
         const completion = taskCount > 0 ? (completedTasks / taskCount * 100) : 0;
         
         html += `
@@ -293,7 +328,7 @@ function displayProjects(projects) {
                 <p>${project.description || 'No description'}</p>
                 <div class="project-meta">
                     <span><i class="fas fa-calendar"></i> ${project.deadline}</span>
-                    <span><i class="fas fa-tasks"></i> ${taskCount} tasks</span>
+                    <span><i class="fas fa-tasks"></i> ${taskCount} task${taskCount !== 1 ? 's' : ''}</span>
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill" style="width: ${completion}%"></div>
@@ -405,6 +440,38 @@ function displayProjectDetails(project, tasks, stats) {
         html += '<p>No tasks in this project yet.</p>';
     } else {
         tasks.forEach(task => {
+            // Boutons de changement de statut
+            let statusButtons = '';
+            if (task.status === 'TODO' && task.assignedMemberId) {
+                statusButtons = `<button class="btn btn-small btn-primary" onclick="startTask(${task.id}, ${project.id})" title="Commencer la tâche">
+                    <i class="fas fa-play"></i> Commencer
+                </button>`;
+            } else if (task.status === 'IN_PROGRESS') {
+                statusButtons = `<button class="btn btn-small btn-success" onclick="completeTask(${task.id}, ${project.id})" title="Marquer comme terminée">
+                    <i class="fas fa-check"></i> Terminer
+                </button>`;
+            } else if (task.status === 'COMPLETED') {
+                statusButtons = `<span class="task-completed-badge">
+                    <i class="fas fa-check-circle"></i> Terminée
+                </span>`;
+            }
+            
+            // Bouton d'assignation manuelle (uniquement si pas assignée)
+            let assignButton = '';
+            if (!task.assignedMemberId) {
+                assignButton = `<button class="btn btn-small btn-secondary" onclick="showAssignTaskModal(${task.id}, ${project.id})" title="Assigner manuellement">
+                    <i class="fas fa-user-plus"></i> Assigner
+                </button>`;
+            }
+            
+            // Bouton de retrait d'assignation (uniquement si TODO et assignée)
+            let unassignButton = '';
+            if (task.status === 'TODO' && task.assignedMemberId) {
+                unassignButton = `<button class="btn btn-small btn-warning" onclick="unassignTask(${task.id}, ${project.id})" title="Retirer l'assignation">
+                    <i class="fas fa-user-minus"></i> Retirer
+                </button>`;
+            }
+            
             html += `
                 <div class="task-item">
                     <div class="task-info">
@@ -415,6 +482,11 @@ function displayProjectDetails(project, tasks, stats) {
                             <span class="priority-badge ${task.priority}">${task.priority}</span> • 
                             <span class="status-badge ${task.status.toLowerCase().replace('_', '-')}">${task.status}</span>
                         </p>
+                    </div>
+                    <div class="task-actions">
+                        ${assignButton}
+                        ${unassignButton}
+                        ${statusButtons}
                     </div>
                 </div>
             `;
@@ -487,8 +559,19 @@ async function allocateProjectTasks(projectId) {
             showNotification(`Assigned ${result.assignedCount} tasks, ${result.failedCount} failed.`, 'warning');
         }
         
+        // Rafraîchir toutes les vues concernées
         loadProjects();
         loadAlerts();
+        
+        // Rafraîchir le dashboard si on y est
+        if (currentPage === 'dashboard') {
+            loadDashboard();
+        }
+        
+        // Rafraîchir les membres si on est sur cette page
+        if (currentPage === 'members') {
+            loadMembers();
+        }
     } catch (error) {
         console.error('Error allocating tasks:', error);
         showNotification('Error allocating tasks: ' + error.message, 'error');
@@ -658,6 +741,191 @@ function displayProjectStatistics(projects) {
     
     container.innerHTML = html;
 }
+
+// Fonctions pour gérer les changements de statut des tâches
+async function startTask(taskId, projectId) {
+    if (!confirm('Voulez-vous commencer cette tâche ?')) {
+        return;
+    }
+    
+    try {
+        const task = await TasksAPI.getById(taskId);
+        task.status = 'IN_PROGRESS';
+        await TasksAPI.update(task);
+        
+        showNotification('Tâche démarrée avec succès !', 'success');
+        
+        // Rafraîchir l'affichage
+        if (projectId) {
+            viewProjectDetails(projectId);
+        }
+    } catch (error) {
+        console.error('Error starting task:', error);
+        showNotification('Erreur lors du démarrage de la tâche: ' + error.message, 'error');
+    }
+}
+
+async function completeTask(taskId, projectId) {
+    if (!confirm('Marquer cette tâche comme terminée ?')) {
+        return;
+    }
+    
+    try {
+        const task = await TasksAPI.getById(taskId);
+        task.status = 'COMPLETED';
+        await TasksAPI.update(task);
+        
+        showNotification('Tâche terminée ! Félicitations ! 🎉', 'success');
+        
+        // Rafraîchir l'affichage
+        if (projectId) {
+            viewProjectDetails(projectId);
+        }
+        
+        // Rafraîchir aussi le dashboard si on y est
+        if (currentPage === 'dashboard') {
+            loadDashboard();
+        }
+    } catch (error) {
+        console.error('Error completing task:', error);
+        showNotification('Erreur lors de la complétion de la tâche: ' + error.message, 'error');
+    }
+}
+
+// Manual task assignment functions
+async function showAssignTaskModal(taskId, projectId) {
+    currentTaskId = taskId;
+    currentProject = projectId;
+    
+    try {
+        // Charger les membres disponibles
+        const members = await MembersAPI.getAll();
+        const task = await TasksAPI.getById(taskId);
+        
+        if (!members || members.length === 0) {
+            showNotification('Aucun membre disponible', 'error');
+            return;
+        }
+        
+        // Créer les options pour les membres
+        const memberOptions = members.map(m => {
+            // Calculer le pourcentage de charge si non fourni
+            const workloadPct = m.workloadPercentage || 
+                               (m.weeklyAvailability > 0 ? (m.currentWorkload / m.weeklyAvailability * 100) : 0);
+            const workload = workloadPct.toFixed(0);
+            return `<option value="${m.id}">${m.name} (${workload}% chargé)</option>`;
+        }).join('');
+        
+        // Créer le modal HTML
+        const modalHtml = `
+            <div class="modal-backdrop" id="assignTaskBackdrop" onclick="closeAssignTaskModal()"></div>
+            <div class="modal active" id="assignTaskModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-user-plus"></i> Assigner la tâche</h2>
+                        <button class="close-btn" onclick="closeAssignTaskModal()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>Tâche :</strong> ${task.title}</p>
+                        <p><strong>Heures estimées :</strong> ${task.estimatedHours}h</p>
+                        <br>
+                        <label for="memberSelect">Sélectionner un membre :</label>
+                        <select id="memberSelect" class="form-control">
+                            <option value="">-- Choisir un membre --</option>
+                            ${memberOptions}
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeAssignTaskModal()">Annuler</button>
+                        <button type="button" class="btn btn-primary" onclick="assignTaskToMember()">Assigner</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Ajouter le modal au DOM
+        const modalContainer = document.createElement('div');
+        modalContainer.id = 'assignTaskContainer';
+        modalContainer.innerHTML = modalHtml;
+        document.body.appendChild(modalContainer);
+        
+    } catch (error) {
+        console.error('Error showing assign modal:', error);
+        console.error('Error details:', error.message);
+        showNotification('Erreur lors du chargement des données: ' + error.message, 'error');
+    }
+}
+
+function closeAssignTaskModal() {
+    const container = document.getElementById('assignTaskContainer');
+    if (container) {
+        container.remove();
+    }
+}
+
+async function assignTaskToMember() {
+    const memberId = document.getElementById('memberSelect').value;
+    
+    if (!memberId) {
+        showNotification('Veuillez sélectionner un membre', 'error');
+        return;
+    }
+    
+    try {
+        await TasksAPI.assignToMember(currentTaskId, parseInt(memberId));
+        showNotification('Tâche assignée avec succès !', 'success');
+        closeAssignTaskModal();
+        
+        // Rafraîchir l'affichage
+        if (currentProject) {
+            viewProjectDetails(currentProject);
+        }
+        
+        // Rafraîchir le dashboard si nécessaire
+        if (currentPage === 'dashboard') {
+            loadDashboard();
+        }
+        
+        // Rafraîchir le compteur d'alertes
+        loadAlertCount();
+        
+    } catch (error) {
+        console.error('Error assigning task:', error);
+        
+        // Vérifier si c'est une erreur d'incompétence
+        if (error.message && error.message.includes('INCOMPETENT')) {
+            const message = error.message.replace('INCOMPETENT: ', '');
+            showNotification('❌ ' + message, 'error');
+        } else {
+            showNotification('Erreur lors de l\'assignation: ' + error.message, 'error');
+        }
+    }
+}
+
+async function unassignTask(taskId, projectId) {
+    if (!confirm('Êtes-vous sûr de vouloir retirer l\'assignation de cette tâche ?')) {
+        return;
+    }
+    
+    try {
+        await TasksAPI.unassign(taskId);
+        showNotification('Assignation retirée avec succès !', 'success');
+        
+        // Rafraîchir l'affichage
+        if (projectId) {
+            viewProjectDetails(projectId);
+        }
+        
+        // Rafraîchir le dashboard si nécessaire
+        if (currentPage === 'dashboard') {
+            loadDashboard();
+        }
+    } catch (error) {
+        console.error('Error unassigning task:', error);
+        showNotification('Erreur: ' + error.message, 'error');
+    }
+}
+
 
 // Utility Functions
 function closeModal(modalId) {

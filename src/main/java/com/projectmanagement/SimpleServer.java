@@ -161,10 +161,27 @@ public class SimpleServer {
             
             TaskDAO dao = new TaskDAO();
             String method = exchange.getRequestMethod();
+            String path = exchange.getRequestURI().getPath();
             String response = "";
             
             try {
-                if ("GET".equals(method)) {
+                // POST /api/tasks/{taskId}/assign - Manually assign task to member
+                if ("POST".equals(method) && path.contains("/assign")) {
+                    String body = read(exchange);
+                    Map<String, Object> data = gson.fromJson(body, Map.class);
+                    int taskId = getId(exchange);
+                    int memberId = ((Double)data.get("memberId")).intValue();
+                    dao.assignTaskToMember(taskId, memberId);
+                    response = "{\"success\":true,\"message\":\"Task assigned successfully\"}";
+                }
+                // DELETE /api/tasks/{taskId}/assign - Unassign task (only if TODO)
+                else if ("DELETE".equals(method) && path.contains("/assign")) {
+                    int taskId = getId(exchange);
+                    dao.unassignTask(taskId);
+                    response = "{\"success\":true,\"message\":\"Task unassigned successfully\"}";
+                }
+                // Standard CRUD
+                else if ("GET".equals(method)) {
                     response = gson.toJson(dao.findById(getId(exchange)));
                 } else if ("POST".equals(method)) {
                     Task t = gson.fromJson(read(exchange), Task.class);

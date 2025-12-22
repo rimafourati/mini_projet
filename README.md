@@ -724,6 +724,111 @@ MiniProjetjava/
 **GET** `/api/statistics/workload` - Get workload statistics
 **GET** `/api/statistics/project/{id}` - Get project statistics
 
+---
+
+## 🧪 Testing & Validation
+
+### Comprehensive Test Scenarios
+
+Ce projet inclut une suite complète de tests couvrant **7 scénarios** :
+
+1. **Gestion de l'équipe** - Membres, compétences, disponibilités
+2. **Création de projet** - Projets, tâches, dépendances
+3. **Répartition automatique** - Algorithme d'allocation intelligent
+4. **Détection de surcharge** - Alertes et monitoring
+5. **Modification en cours de projet** - Gestion dynamique
+6. **Visualisation** - Timeline et graphiques
+7. **Statistiques** - Rapports et calculs
+
+### 📚 Documentation de Test
+
+| Document | Description | Quand l'utiliser |
+|----------|-------------|------------------|
+| **[QUICK_START_TESTS.md](QUICK_START_TESTS.md)** | Guide de démarrage rapide (5 min) | Premier test, démo rapide |
+| **[TEST_SCENARIOS.md](TEST_SCENARIOS.md)** | Procédures détaillées (32 pages) | Tests complets, validation |
+| **[TEST_SUMMARY.md](TEST_SUMMARY.md)** | Vue d'ensemble et référence | Comprendre la structure de test |
+
+### 🚀 Quick Start Testing
+
+```powershell
+# 1. Charger les données de test
+mysql -u root -p < database/comprehensive_test_data.sql
+
+# 2. Démarrer le serveur
+.\run.ps1
+
+# 3. Exécuter les tests automatisés (35+ tests)
+javac -d bin -cp "bin;lib/*" src/test/java/com/projectmanagement/*.java
+java -cp "bin;lib/*" com.projectmanagement.TestScenariosRunner
+
+# 4. Ou exécuter les validations rapides
+java -cp "bin;lib/*" com.projectmanagement.TestValidationUtils
+```
+
+### ✅ Test Files
+
+- **`database/comprehensive_test_data.sql`** - Données de test complètes
+  - 5 membres avec compétences variées
+  - 2 projets avec 14 tâches
+  - Dépendances et alertes pré-configurées
+
+- **`src/test/java/com/projectmanagement/TestScenariosRunner.java`** - Tests automatisés
+  - 35+ cas de test automatisés
+  - Couvre les 7 scénarios
+  - Rapports détaillés pass/fail
+
+- **`src/test/java/com/projectmanagement/TestValidationUtils.java`** - Utilitaires de validation
+  - Validation par scénario
+  - Vérifications de cohérence
+  - Validation standalone
+
+### 📊 Expected Results
+
+Après l'exécution des tests, vous devriez voir :
+
+```
+╔════════════════════════════════════════════════════════════╗
+║  TEST EXECUTION SUMMARY                                   ║
+╚════════════════════════════════════════════════════════════╝
+
+  Total Tests:  35
+  ✅ Passed:     35 (100.0%)
+  ❌ Failed:     0 (0.0%)
+
+  🎉 ALL TESTS PASSED! 🎉
+```
+
+### 🎯 Test Coverage
+
+| Composant | Couverture | Tests |
+|-----------|-----------|-------|
+| Gestion d'équipe | 100% | 5 tests |
+| Gestion de projets | 100% | 6 tests |
+| Allocation de tâches | 100% | 5 tests |
+| Système d'alertes | 100% | 4 tests |
+| Statistiques | 100% | 5 tests |
+| Visualisation | 90% | 4 tests |
+| API Endpoints | 95% | 6 tests |
+
+### 🐛 Troubleshooting
+
+Si les tests échouent :
+
+```powershell
+# Recharger la base de données
+mysql -u root -p < database/comprehensive_test_data.sql
+
+# Vérifier que le serveur tourne
+netstat -ano | findstr :8080
+
+# Relancer les tests
+java -cp "bin;lib/*" com.projectmanagement.TestScenariosRunner
+```
+
+Pour plus de détails, consultez [QUICK_START_TESTS.md](QUICK_START_TESTS.md).
+
+---
+
 ## 👥 Contributeurs
 
 Ce projet a été développé dans le cadre d'un mini-projet universitaire.
@@ -734,5 +839,5 @@ Ce projet est à usage éducatif.
 
 ---
 
-**Date**: Novembre 2025
+**Date**: Décembre 2025
 **Version**: 1.0

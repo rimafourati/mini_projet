@@ -233,6 +233,33 @@ body {
     font-size: 0.9rem;
 }
 
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-warning {
+    background-color: #ff9800;
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #e68900;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
 /* Member Card */
 .member-card {
     background-color: var(--card-bg);
@@ -611,6 +638,27 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.task-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.task-completed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--success-color);
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    background-color: #e8f5e9;
+    border-radius: 5px;
+}
+
+.task-completed-badge i {
+    font-size: 1.2rem;
 }
 
 .task-info h4 {

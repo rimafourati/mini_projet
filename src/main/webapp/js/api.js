@@ -96,6 +96,16 @@ const TasksAPI = {
         method: 'DELETE'
     }),
     
+    // Manual assignment
+    assignToMember: (taskId, memberId) => apiRequest(`/tasks/${taskId}/assign`, {
+        method: 'POST',
+        body: JSON.stringify({ memberId })
+    }),
+    
+    unassign: (taskId) => apiRequest(`/tasks/${taskId}/assign`, {
+        method: 'DELETE'
+    }),
+    
     addSkillRequirement: (taskId, skillId, requiredLevel) => apiRequest(`/tasks/${taskId}/skills`, {
         method: 'POST',
         body: JSON.stringify({ skillId, requiredLevel })
