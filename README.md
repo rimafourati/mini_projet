@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Plateforme de Gestion de Projets Collaboratifs
 
 Une application web complète pour gérer des projets en équipe avec répartition intelligente des tâches selon les compétences, disponibilités et charges de travail des membres.
@@ -841,3 +842,6 @@ Ce projet est à usage éducatif.
 
 **Date**: Décembre 2025
 **Version**: 1.0
+=======
+# mini_projet
+>>>>>>> 7480c142db1c4523ca7e1a07c1261778df909ec0
